@@ -1,25 +1,25 @@
 import torch
 import torch.nn as nn
-from torchsummary import summary
+import torchaudio
 
-def calculate_vram(model: nn.Module, input_size: tuple, batch_size: int):
-    input_tensor = torch.randn((batch_size, *input_size))
+def calculate_vram(model: nn.Module, input_size: tuple, batch_size: int, sample_rate: int):
+    input_tensor = torch.randn((batch_size, 1, input_size)).to(torch.float32).to(device)
     total_params = sum(p.numel() for p in model.parameters())
-    input_size = list(input_tensor.size())
-    input_size[0] = batch_size
-    input_size = tuple(input_size)
-    input_bytes = input_tensor.element_size() * input_tensor.nelement()
+    input_audio = torchaudio.transforms.Resample(orig_freq=sample_rate, new_freq=16000)(input_tensor)
+    input_bytes = input_audio.element_size() * input_audio.nelement()
     input_vram = input_bytes * batch_size / (1024 ** 3)  # Convert to GB
-    output, _ = summary(model, input_size=input_size)
-    output_vram = output.total_output * 4 / (1024 ** 3)  # Assuming float32 (4 bytes)
+    output_bytes = input_bytes
+    output_vram = output_bytes * batch_size / (1024 ** 3)  # Convert to GB
     total_vram = total_params * 4 / (1024 ** 3)  # Assuming float32 (4 bytes)
     total_vram += input_vram + output_vram
     return total_vram
 
 # Example usage
-model = YourModel()
-input_size = (3, 224, 224)  # Example input size
-batch_size = 16  # User-defined batch size
+model = Autoencoder(input_size, hidden_size, latent_size).to(device)
+input_size = 16000  # Audio sample length
+batch_size = 32
+sample_rate = 44100  # Original sample rate of the audio
 
-vram_estimate = calculate_vram(model, input_size, batch_size)
+vram_estimate = calculate_vram(model, input_size, batch_size, sample_rate)
 print(f"Estimated VRAM usage for batch size {batch_size}: {vram_estimate:.2f} GB")
+
