@@ -1,0 +1,25 @@
+import torch
+import torch.nn as nn
+from torchsummary import summary
+
+def calculate_vram(model: nn.Module, input_size: tuple, batch_size: int):
+    input_tensor = torch.randn((batch_size, *input_size))
+    total_params = sum(p.numel() for p in model.parameters())
+    input_size = list(input_tensor.size())
+    input_size[0] = batch_size
+    input_size = tuple(input_size)
+    input_bytes = input_tensor.element_size() * input_tensor.nelement()
+    input_vram = input_bytes * batch_size / (1024 ** 3)  # Convert to GB
+    output, _ = summary(model, input_size=input_size)
+    output_vram = output.total_output * 4 / (1024 ** 3)  # Assuming float32 (4 bytes)
+    total_vram = total_params * 4 / (1024 ** 3)  # Assuming float32 (4 bytes)
+    total_vram += input_vram + output_vram
+    return total_vram
+
+# Example usage
+model = YourModel()
+input_size = (3, 224, 224)  # Example input size
+batch_size = 16  # User-defined batch size
+
+vram_estimate = calculate_vram(model, input_size, batch_size)
+print(f"Estimated VRAM usage for batch size {batch_size}: {vram_estimate:.2f} GB")
